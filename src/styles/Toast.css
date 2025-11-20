@@ -1,0 +1,90 @@
+/* Toast Notification Custom Styles */
+
+/* Success toasts - Green */
+.Toastify__toast--success {
+  background-color: #10b981 !important;
+  color: white !important;
+}
+
+.Toastify__toast--success .Toastify__progress-bar {
+  background: #059669 !important;
+}
+
+/* Error toasts - Red */
+.Toastify__toast--error {
+  background-color: #ef4444 !important;
+  color: white !important;
+}
+
+.Toastify__toast--error .Toastify__progress-bar {
+  background: #dc2626 !important;
+}
+
+/* Warning toasts - Orange/Yellow */
+.Toastify__toast--warning {
+  background-color: #f59e0b !important;
+  color: white !important;
+}
+
+.Toastify__toast--warning .Toastify__progress-bar {
+  background: #d97706 !important;
+}
+
+/* Info toasts - Blue */
+.Toastify__toast--info {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.Toastify__toast--info .Toastify__progress-bar {
+  background: #2563eb !important;
+}
+
+/* Toast container positioning */
+.Toastify__toast-container--top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  max-width: 500px;
+  min-width: 300px;
+}
+
+/* Toast body styling */
+.Toastify__toast {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif !important;
+  font-size: 15px !important;
+  padding: 16px !important;
+}
+
+/* Close button styling */
+.Toastify__close-button {
+  color: white !important;
+  opacity: 0.8 !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+}
+
+/* Progress bar styling */
+.Toastify__progress-bar {
+  height: 4px !important;
+}
+
+/* Mobile responsiveness */
+@media only screen and (max-width: 480px) {
+  .Toastify__toast-container--top-center {
+    width: 90vw;
+    min-width: unset;
+    margin: 0 auto;
+  }
+  
+  .Toastify__toast {
+    margin-bottom: 8px;
+  }
+}

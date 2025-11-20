@@ -1,0 +1,251 @@
+.book-ride,
+.create-ride,
+.wallet-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+.page-header {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-back {
+  padding: 8px 16px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-back:hover {
+  background: #d1d5db;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  margin: 0;
+  color: #111827;
+}
+
+.booking-container,
+.create-container {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  height: calc(100vh - 68px);
+}
+
+.booking-sidebar,
+.create-sidebar {
+  background: white;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.route-selection,
+.ride-selection,
+.pickup-selection,
+.seat-selection,
+.form-section {
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.route-selection h2,
+.ride-selection h2,
+.pickup-selection h2,
+.seat-selection h2,
+.form-section h2 {
+  font-size: 18px;
+  margin: 0 0 16px;
+  color: #111827;
+}
+
+.routes-list,
+.rides-list,
+.pickup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.route-option,
+.ride-option,
+.pickup-option {
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.route-option:hover,
+.ride-option:hover,
+.pickup-option:hover {
+  border-color: #667eea;
+  background: #f9fafb;
+}
+
+.route-option.selected,
+.ride-option.selected,
+.pickup-option.selected {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.route-name {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.route-info,
+.ride-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.price {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.ride-time {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.ride-seats {
+  font-size: 13px;
+  color: #667eea;
+  font-weight: 500;
+}
+
+.pickup-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pickup-icon {
+  font-size: 20px;
+}
+
+.pickup-name {
+  font-size: 15px;
+  color: #111827;
+}
+
+.seat-counter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 20px 0;
+}
+
+.btn-counter {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-counter:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.btn-counter:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.seat-count {
+  font-size: 32px;
+  font-weight: bold;
+  color: #111827;
+  min-width: 50px;
+  text-align: center;
+}
+
+.booking-summary,
+.ride-summary {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+.summary-row,
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+}
+
+.summary-row.total,
+.summary-item.total {
+  border-top: 2px solid #e5e7eb;
+  margin-top: 8px;
+  padding-top: 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.booking-map,
+.create-map {
+  position: relative;
+  height: 100%;
+}
+
+.map-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.map-marker {
+  background: #667eea;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1024px) {
+  .booking-container,
+  .create-container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .booking-map,
+  .create-map {
+    height: 400px;
+  }
+}
