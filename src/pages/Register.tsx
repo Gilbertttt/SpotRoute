@@ -99,6 +99,7 @@ const Register: React.FC = () => {
                 <input
                   id="fullName"
                   type="text"
+                  name='name'
                   placeholder="John Doe"
                   value={formData.name}
                   onChange={ handleChange}
@@ -117,6 +118,7 @@ const Register: React.FC = () => {
                 <input
                   id="email"
                   type="email"
+                  name='email'
                   placeholder="your.email@example.com"
                   value={formData.email}
                   onChange={(e) => handleChange(e)}
@@ -135,6 +137,7 @@ const Register: React.FC = () => {
                 <input
                   id="phone"
                   type="tel"
+                  name='phone'
                   placeholder="+234 800 000 0000"
                   value={formData.phone}
                   onChange={(e) => handleChange(e)}
@@ -182,6 +185,7 @@ const Register: React.FC = () => {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  name='password'
                   placeholder="Create a strong password"
                   value={formData.password}
                   onChange={(e) => handleChange(e)}
@@ -209,7 +213,7 @@ const Register: React.FC = () => {
             <input
               type="password"
               id="confirmPassword"
-              name="confirmPassword"
+              name='confirmPassword'
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Re-enter your password"
