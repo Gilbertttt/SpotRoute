@@ -1,0 +1,79 @@
+[
+  {
+    "id": "426df540-6318-4070-9008-93defdcc9ef4",
+    "email": "testuser@example.com",
+    "password": "$2b$10$Agp4acd7RGJWeFiU/nJMOe0RjxJYI2U4Y2NCr5Y15NOg1A9aHtJ9G",
+    "name": "Test User",
+    "phone": "+2348011122233",
+    "role": "USER",
+    "createdAt": "2025-11-21T12:09:53.778Z"
+  },
+  {
+    "id": "260bef61-d3fc-4139-b409-73334d4bfc99",
+    "email": "johndoe@gmail.com",
+    "password": "$2b$10$WZ/V0FfP0QEUVw4WTMx.Y.O0Ec1apqKmzVHqPlv6btx5jymMYD2ni",
+    "name": "John Doe",
+    "phone": "09033041866",
+    "role": "USER",
+    "createdAt": "2025-11-21T13:41:56.342Z"
+  },
+  {
+    "id": "765c1d21-b364-4f9f-96ad-6a1b57780032",
+    "email": "fklefnlef@kflen",
+    "password": "$2b$10$gUYLgAtq0mhBC3SAyFzjoOlSlT6vXN9uvbcaP8wJXuDUXV29pycem",
+    "name": "kjdejdhkejd",
+    "phone": "efklefe",
+    "role": "USER",
+    "createdAt": "2025-11-21T13:52:16.521Z"
+  },
+  {
+    "id": "72262912-4d14-447d-a5c1-a8b5b6652b7b",
+    "email": "umorengilbert17@gmail.com",
+    "password": "$2b$10$0rt7YRgBLVsv8x/WE33ufOXGuvViPx0S5S80Fd/2Fv04sMQrso9Q6",
+    "name": "Umoren Gilbert",
+    "phone": "+2349033041866",
+    "role": "DRIVER",
+    "createdAt": "2025-11-21T13:56:24.458Z",
+    "carModel": "Toyota Corolla 2020",
+    "carPlate": "ABC-123-XY",
+    "wallet": {
+      "id": "56ed5da9-2d22-479c-86c8-23e84240b351",
+      "balance": 0,
+      "pendingBalance": 0,
+      "totalEarnings": 0
+    },
+    "profile": {
+      "tripsCompleted": 0,
+      "overallRating": 0,
+      "totalRatings": 0,
+      "badges": [],
+      "ratings": [],
+      "joinDate": "2025-11-21T13:56:24.459Z"
+    }
+  },
+  {
+    "id": "a62e0ea1-3d9f-4365-aa04-09a4defdded7",
+    "email": "albertumoren2004@gmail.com",
+    "password": "$2b$10$iZ6gVEUvW1NzJPcseWLk7evl7QXVDWskEVzJS2RMbg1eHs86rFOD6",
+    "name": "Albert",
+    "phone": "+2349033041866",
+    "role": "DRIVER",
+    "createdAt": "2025-11-21T13:58:26.970Z",
+    "carModel": "Toyota Corolla 2020",
+    "carPlate": "ABC-123-XY",
+    "wallet": {
+      "id": "ba6f9300-802e-4185-ab38-3fa909d9e059",
+      "balance": 0,
+      "pendingBalance": 0,
+      "totalEarnings": 0
+    },
+    "profile": {
+      "tripsCompleted": 0,
+      "overallRating": 0,
+      "totalRatings": 0,
+      "badges": [],
+      "ratings": [],
+      "joinDate": "2025-11-21T13:58:26.970Z"
+    }
+  }
+]

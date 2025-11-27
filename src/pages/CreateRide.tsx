@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import GoogleMapReact from 'google-map-react';
-import { rideService } from '../services/api';
-import { mockRoutes, mockPickupPoints } from '../services/mockData';
+import { rideService, routeService } from '../services/api';
 import type { Route, PickupPoint } from '../types';
 import '../styles/CreateRide.css';
 
@@ -11,23 +10,48 @@ const Marker: React.FC<{ lat: number; lng: number; text: string }> = ({ text }) 
   <div className="map-marker">{text}</div>
 );
 
+
 const CreateRide: React.FC = () => {
-  const [routes] = useState<Route[]>(mockRoutes);
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [availablePickupPoints, setAvailablePickupPoints] = useState<PickupPoint[]>([]);
   const [selectedPickupPoints, setSelectedPickupPoints] = useState<string[]>([]);
   const [departureDate, setDepartureDate] = useState('');
   const [departureTime, setDepartureTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const navigate = useNavigate();
 
   const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
 
-  const handleRouteSelect = (route: Route) => {
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        setLoadingRoutes(true);
+        const fetchedRoutes = await routeService.getAllRoutes();
+        setRoutes(fetchedRoutes);
+      } catch (error) {
+        console.error('Failed to load routes:', error);
+        toast.error('Failed to load routes. Please try again.');
+      } finally {
+        setLoadingRoutes(false);
+      }
+    };
+
+    loadRoutes();
+  }, []);
+
+  const handleRouteSelect = async (route: Route) => {
     setSelectedRoute(route);
-    const points = mockPickupPoints[route.id] || [];
-    setAvailablePickupPoints(points);
     setSelectedPickupPoints([]);
+    try {
+      const points = await routeService.getPickupPoints(route.id);
+      setAvailablePickupPoints(points);
+    } catch (error) {
+      console.error('Failed to load pickup points:', error);
+      toast.error('Failed to load pickup points. Please try again.');
+      setAvailablePickupPoints([]);
+    }
   };
 
   const togglePickupPoint = (pointId: string) => {
@@ -96,6 +120,11 @@ const CreateRide: React.FC = () => {
           <form onSubmit={handleCreateRide} className="create-form">
             <section className="form-section">
               <h2>Select Route</h2>
+              {loadingRoutes ? (
+                <div className="loading">Loading routes...</div>
+              ) : routes.length === 0 ? (
+                <div className="empty-state">No routes available</div>
+              ) : (
               <div className="routes-list">
                 {routes.map((route) => (
                   <div
@@ -113,6 +142,7 @@ const CreateRide: React.FC = () => {
                   </div>
                 ))}
               </div>
+              )}
             </section>
 
             {selectedRoute && (

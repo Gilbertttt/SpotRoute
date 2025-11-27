@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import GoogleMapReact from 'google-map-react';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
-import { bookingService, rideService } from '../services/api';
-import { mockRoutes } from '../services/mockData';
+import { bookingService, rideService, routeService } from '../services/api';
 import type { Ride, Route, PickupPoint } from '../types';
 import '../styles/BookRide.css';
 
@@ -13,18 +12,36 @@ const Marker: React.FC<{ lat: number; lng: number; text: string }> = ({ text }) 
 );
 
 const BookRide: React.FC = () => {
-  const [routes] = useState<Route[]>(mockRoutes);
+  const [routes, setRoutes] = useState<Route[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [availableRides, setAvailableRides] = useState<Ride[]>([]);
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
   const [selectedPickupPoint, setSelectedPickupPoint] = useState<PickupPoint | null>(null);
   const [seatCount, setSeatCount] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
   const FLUTTERWAVE_PUBLIC_KEY = process.env.REACT_APP_FLUTTERWAVE_PUBLIC_KEY || '';
+
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        setLoadingRoutes(true);
+        const fetchedRoutes = await routeService.getAllRoutes();
+        setRoutes(fetchedRoutes);
+      } catch (error) {
+        console.error('Failed to load routes:', error);
+        toast.error('Failed to load routes. Please try again.');
+      } finally {
+        setLoadingRoutes(false);
+      }
+    };
+
+    loadRoutes();
+  }, []);
 
   const selectedRoute = routes?.find(r => r.id === selectedRouteId) || null;
 
