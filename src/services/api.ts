@@ -97,7 +97,7 @@ export const authService = {
       }
       return mockUser;
     }
-    const response = await api.get<User | Driver>("/auth/user");
+    const response = await api.get<User | Driver>("/auth/me");
     return response.data;
   },
 };

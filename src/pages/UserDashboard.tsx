@@ -116,46 +116,83 @@ const UserDashboard: React.FC = () => {
                       <h4>
                         {booking.ride.route.from} → {booking.ride.route.to}
                       </h4>
-                      <p className="pickup-point">{booking.pickupPoint.name}</p>
+                      {booking.pickupPoint && (
+                        <p className="pickup-point"> {booking.pickupPoint.name}</p>
+                      )}
                     </div>
                     <span className={`status ${getStatusClass(booking.status)}`}>
                       {booking.status}
                     </span>
                   </div>
+                  
+                  {/* Driver Details Section */}
+                  {booking.ride.driver && (
+                    <div className="driver-details-section">
+                      <h5>Driver Information</h5>
+                      <div className="driver-info-grid">
+                        <div className="driver-info-item">
+                          <span className="label">Name:</span>
+                          <span className="value">{booking.ride.driver.name}</span>
+                        </div>
+                        {booking.ride.driver.phone && (
+                          <div className="driver-info-item">
+                            <span className="label">Phone:</span>
+                            <span className="value">
+                              <a href={`tel:${booking.ride.driver.phone}`} className="phone-link">
+                                {booking.ride.driver.phone}
+                              </a>
+                            </span>
+                          </div>
+                        )}
+                        {booking.ride.driver.carPlate && (
+                          <div className="driver-info-item">
+                            <span className="label">Car Plate:</span>
+                            <span className="value">{booking.ride.driver.carPlate}</span>
+                          </div>
+                        )}
+                        {booking.ride.driver.carModel && (
+                          <div className="driver-info-item">
+                            <span className="label">Car Model:</span>
+                            <span className="value">{booking.ride.driver.carModel}</span>
+                          </div>
+                        )}
+                        {booking.ride.driver.profile && (
+                          <div className="driver-info-item">
+                            <span className="label">Rating:</span>
+                            <span className="value">
+                              ⭐ {booking.ride.driver.profile.overallRating?.toFixed(1) || '0.0'} 
+                              {booking.ride.driver.profile.totalRatings 
+                                ? ` (${booking.ride.driver.profile.totalRatings} reviews)`
+                                : ' (No reviews yet)'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="booking-details">
                     <div className="detail-row">
-                      <span className="label">Departure:</span>
-                      <span className="value">{formatDate(booking.ride.departureTime)}</span>
+                      <span className="label">Route:</span>
+                      <span className="value">
+                        {booking.ride.route.from} → {booking.ride.route.to}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Price per seat:</span>
+                      <span className="value">₦{booking.ride.route.price.toLocaleString()}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="label">Total Price:</span>
+                      <span className="value">₦{booking.totalPrice.toLocaleString()}</span>
                     </div>
                     <div className="detail-row">
                       <span className="label">Seats:</span>
                       <span className="value">{booking.seatCount}</span>
                     </div>
                     <div className="detail-row">
-                      <span className="label">Driver:</span>
-                      <span className="value">{booking.ride.driver.name}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">Car:</span>
-                      <span className="value">{booking.ride.driver.carModel}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="label">Plate Number:</span>
-                      <span className="value">{booking.ride.driver.carPlate}</span>
-                    </div>
-                    {booking.ride.driver.phone && (
-                      <div className="detail-row">
-                        <span className="label">Driver Phone:</span>
-                        <span className="value">
-                          <a href={`tel:${booking.ride.driver.phone}`} className="phone-link">
-                            {booking.ride.driver.phone}
-                          </a>
-                        </span>
-                      </div>
-                    )}
-                    <div className="detail-row price-row">
-                      <span className="label">Total:</span>
-                      <span className="value price">₦{booking.totalPrice.toLocaleString()}</span>
+                      <span className="label">Departure:</span>
+                      <span className="value">{formatDate(booking.ride.departureTime)}</span>
                     </div>
                   </div>
                   {booking.status === 'PENDING' && (
@@ -200,3 +237,4 @@ const UserDashboard: React.FC = () => {
 };
 
 export default UserDashboard;
+

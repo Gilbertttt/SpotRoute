@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
-const { v4: uuid } = require('uuid');
-const userStore = require('../store/userStore');
 const tokenService = require('../services/tokenService');
+const User = require('../models/User');
 
 const VALID_ROLES = ['USER', 'DRIVER'];
 
@@ -10,22 +9,6 @@ const sanitizeUser = (user) => {
   const { password, ...rest } = user;
   return rest;
 };
-
-const buildDriverProfile = () => ({
-  tripsCompleted: 0,
-  overallRating: 0,
-  totalRatings: 0,
-  badges: [],
-  ratings: [],
-  joinDate: new Date().toISOString(),
-});
-
-const buildDriverWallet = () => ({
-  id: uuid(),
-  balance: 0,
-  pendingBalance: 0,
-  totalEarnings: 0,
-});
 
 exports.register = async (req, res, next) => {
   try {
@@ -41,35 +24,22 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ message: 'role must be USER or DRIVER' });
     }
 
-    const existing = await userStore.findByEmail(email);
+    const existing = await User.findByEmail(email);
     if (existing) {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const baseUser = {
-      id: uuid(),
-      email: email.toLowerCase(),
+    const newUser = await User.create({
+      email,
       password: passwordHash,
       name,
       phone,
       role,
-      createdAt: new Date().toISOString(),
-    };
-
-    const newUser =
-      role === 'DRIVER'
-        ? {
-            ...baseUser,
-            carModel: carModel || 'Toyota Corolla',
-            carPlate: carPlate || `SR-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-            wallet: buildDriverWallet(),
-            profile: buildDriverProfile(),
-          }
-        : baseUser;
-
-    await userStore.create(newUser);
+      carModel,
+      carPlate,
+    });
 
     const token = tokenService.generateToken({
       id: newUser.id,
@@ -91,7 +61,7 @@ exports.login = async (req, res, next) => {
       return res.status(400).json({ message: 'email and password are required' });
     }
 
-    const user = await userStore.findByEmail(email);
+    const user = await User.findByEmailWithPassword(email);
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -123,7 +93,7 @@ exports.getCurrentUser = async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const user = await userStore.findById(userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

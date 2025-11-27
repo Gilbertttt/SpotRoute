@@ -2,7 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+const { runMigrations } = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
+const rideRoutes = require('./routes/rideRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const routeRoutes = require('./routes/routeRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -16,6 +21,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/rides', rideRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/routes', routeRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -25,8 +34,16 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚗 SpotRoute backend listening on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await runMigrations();
+    app.listen(PORT, () => {
+      console.log(`🚗 SpotRoute backend listening on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server', error);
+    process.exit(1);
+  }
+};
 
-
+startServer();
