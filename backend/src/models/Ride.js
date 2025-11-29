@@ -273,6 +273,92 @@ class Ride {
 
     return rides;
   }
+
+  static async findByDriverId(driverId) {
+    const [rows] = await pool.query(
+      `
+        SELECT
+          rides.*,
+          routes.origin,
+          routes.destination,
+          routes.price,
+          routes.distance_km,
+          routes.duration_mins,
+          drivers.id as driver_id,
+          drivers.email as driver_email,
+          drivers.name as driver_name,
+          drivers.phone as driver_phone,
+          drivers.role as driver_role,
+          drivers.created_at as driver_created_at,
+          drivers.car_model as driver_car_model,
+          drivers.car_plate as driver_car_plate,
+          drivers.wallet as driver_wallet,
+          drivers.profile as driver_profile
+        FROM rides
+        JOIN routes ON rides.route_id = routes.id
+        JOIN users drivers ON rides.driver_id = drivers.id
+        WHERE rides.driver_id = ?
+        ORDER BY rides.departure_time DESC
+      `,
+      [driverId],
+    );
+
+    const rides = rows.map(mapRideRow);
+
+    for (const ride of rides) {
+      const [pickupPointRows] = await pool.query(
+        `
+          SELECT
+            pp.id as pickup_id,
+            pp.route_id as pickup_route_id,
+            pp.name as pickup_name,
+            pp.lat as pickup_lat,
+            pp.lng as pickup_lng
+          FROM ride_pickup_points rpp
+          JOIN pickup_points pp ON rpp.pickup_point_id = pp.id
+          WHERE rpp.ride_id = ?
+          ORDER BY pp.name
+        `,
+        [ride.id],
+      );
+      ride.pickupPoints = pickupPointRows.map(mapPickupPoint);
+    }
+
+    return rides;
+  }
+
+  static async updateStatus({ rideId, driverId, status }) {
+    const allowedStatuses = ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+    if (!allowedStatuses.includes(status)) {
+      const error = new Error(`status must be one of ${allowedStatuses.join(', ')}`);
+      error.status = 400;
+      throw error;
+    }
+
+    const [result] = await pool.query(
+      `
+        UPDATE rides
+        SET status = ?
+        WHERE id = ? AND driver_id = ?
+      `,
+      [status, rideId, driverId],
+    );
+
+    if (result.affectedRows === 0) {
+      const ride = await Ride.findById(rideId);
+      if (!ride) {
+        const error = new Error('Ride not found');
+        error.status = 404;
+        throw error;
+      }
+
+      const error = new Error('You are not allowed to update this ride');
+      error.status = 403;
+      throw error;
+    }
+
+    return Ride.findById(rideId);
+  }
 }
 
 module.exports = Ride;
