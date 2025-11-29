@@ -46,6 +46,15 @@ api.interceptors.request.use((config) => {
 const delay = (ms: number = 500) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+type ConfirmTransferResponse = {
+  message: string;
+  booking: Booking;
+  payout: {
+    driverAmount: number;
+    commissionAmount: number;
+  };
+};
+
 export const authService = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     if (USE_MOCK_DATA) {
@@ -383,6 +392,37 @@ export const paymentService = {
     const response = await api.post<{ status: string }>("/payments/verify", {
       reference,
     });
+    return response.data;
+  },
+
+  confirmTransfer: async (data: {
+    bookingId: string;
+    amount: number;
+    paymentReference: string;
+    narration?: string;
+  }): Promise<ConfirmTransferResponse> => {
+    if (USE_MOCK_DATA) {
+      await delay();
+      const booking = mockBookings.find((b) => b.id === data.bookingId);
+      if (!booking) {
+        throw new Error("Booking not found");
+      }
+      booking.paymentStatus = "PAID";
+      booking.status = "CONFIRMED";
+      return {
+        message: "Mock transfer confirmed",
+        booking,
+        payout: {
+          driverAmount: Math.round(booking.totalPrice * 0.9),
+          commissionAmount: Math.round(booking.totalPrice * 0.1),
+        },
+      };
+    }
+
+    const response = await api.post<ConfirmTransferResponse>(
+      "/payments/confirm-transfer",
+      data
+    );
     return response.data;
   },
 };

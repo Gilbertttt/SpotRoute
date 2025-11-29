@@ -9,6 +9,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const routeRoutes = require('./routes/routeRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const virtualAccountRoutes = require('./routes/virtualAccountRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/routes', routeRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/driver', virtualAccountRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

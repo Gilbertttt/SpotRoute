@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import GoogleMapReact from 'google-map-react';
-import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
-import { bookingService, rideService, routeService } from '../services/api';
-import type { Ride, Route, PickupPoint } from '../types';
+import { bookingService, paymentService, rideService, routeService } from '../services/api';
+import type { Booking, PaymentInstructions, Ride, Route, PickupPoint } from '../types';
 import '../styles/BookRide.css';
 
 const Marker: React.FC<{ lat: number; lng: number; text: string }> = ({ text }) => (
@@ -21,10 +20,15 @@ const BookRide: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [recentBooking, setRecentBooking] = useState<Booking | null>(null);
+  const [paymentInstructions, setPaymentInstructions] = useState<PaymentInstructions | null>(null);
+  const [showPaymentPanel, setShowPaymentPanel] = useState(false);
+  const [transferReference, setTransferReference] = useState('');
+  const [transferAmount, setTransferAmount] = useState(0);
+  const [confirmingTransfer, setConfirmingTransfer] = useState(false);
   const navigate = useNavigate();
 
   const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
-  const FLUTTERWAVE_PUBLIC_KEY = process.env.REACT_APP_FLUTTERWAVE_PUBLIC_KEY || '';
 
   useEffect(() => {
     const loadRoutes = async () => {
@@ -61,25 +65,32 @@ const BookRide: React.FC = () => {
 
   const totalAmount = (selectedRoute?.price || 0) * seatCount;
 
-  const flutterwaveConfig = {
-    public_key: FLUTTERWAVE_PUBLIC_KEY,
-    tx_ref: `STX-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    amount: totalAmount,
-    currency: 'NGN',
-    payment_options: 'card,mobilemoney,ussd,banktransfer',
-    customer: {
-      email: user.email,
-      phone_number: user.phone,
-      name: user.name,
-    },
-    customizations: {
-      title: 'Stonex Ride Booking',
-      description: `Booking for ${selectedRoute?.from} to ${selectedRoute?.to}`,
-      logo: 'https://stonex-rides.com/logo.png',
-    },
+  const buildPaymentInstructions = (booking: Booking): PaymentInstructions | null => {
+    if (booking.paymentInstructions) {
+      return booking.paymentInstructions;
+    }
+
+    if (booking.ride?.driver?.virtualAccount) {
+      return {
+        currency: 'NGN',
+        totalAmount: booking.totalPrice,
+        reference: booking.id,
+        beneficiary: booking.ride.driver.virtualAccount,
+      };
+    }
+
+    return null;
   };
 
-  const handleFlutterwavePayment = useFlutterwave(flutterwaveConfig);
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+    } catch (error) {
+      console.error('Clipboard error:', error);
+      toast.warning('Unable to copy automatically. Please copy manually.');
+    }
+  };
 
   useEffect(() => {
     const loadRides = async () => {
@@ -133,6 +144,50 @@ const BookRide: React.FC = () => {
     setSelectedPickupPoint(null);
   };
 
+  const handleConfirmTransfer = async () => {
+    if (!recentBooking) {
+      toast.error('No booking to confirm.');
+      return;
+    }
+
+    if (!transferReference.trim()) {
+      toast.warning('Please enter the reference from your bank transfer.');
+      return;
+    }
+
+    const amountToConfirm = transferAmount || paymentInstructions?.totalAmount || totalAmount;
+
+    setConfirmingTransfer(true);
+    try {
+      const response = await paymentService.confirmTransfer({
+        bookingId: recentBooking.id,
+        amount: amountToConfirm,
+        paymentReference: transferReference.trim(),
+        narration: `Transfer for booking ${recentBooking.id}`,
+      });
+
+      setRecentBooking(response.booking);
+      const updatedInstructions = buildPaymentInstructions(response.booking);
+      setPaymentInstructions(updatedInstructions);
+      toast.success('Transfer confirmed! Driver has been notified.');
+      setShowPaymentPanel(false);
+      navigate('/user', {
+        state: {
+          bookingId: response.booking.id,
+          success: true,
+        },
+      });
+    } catch (error) {
+      console.error('Transfer confirmation failed:', error);
+      const message =
+        (error as any)?.response?.data?.message ||
+        'Failed to confirm transfer. Please try again or contact support.';
+      toast.error(message);
+    } finally {
+      setConfirmingTransfer(false);
+    }
+  };
+
   const handleBooking = async () => {
     if (!selectedRide || !selectedPickupPoint) {
       toast.warning('Please select a pickup point');
@@ -154,11 +209,6 @@ const BookRide: React.FC = () => {
       return;
     }
 
-    if (!FLUTTERWAVE_PUBLIC_KEY) {
-      toast.error('Payment system is not configured. Please contact support.');
-      return;
-    }
-
     setLoading(true);
     try {
       const booking = await bookingService.createBooking({
@@ -168,51 +218,27 @@ const BookRide: React.FC = () => {
       });
 
       localStorage.setItem('lastBookingId', booking.id);
+      setRecentBooking(booking);
 
-      const txRef = flutterwaveConfig.tx_ref;
-      localStorage.setItem('lastPaymentReference', txRef);
+      const instructions = buildPaymentInstructions(booking);
+      setPaymentInstructions(instructions);
+      setTransferAmount(instructions?.totalAmount || totalAmount);
+      const generatedReference = `TRF-${Date.now().toString(36).toUpperCase()}`;
+      setTransferReference(generatedReference);
+      setShowPaymentPanel(Boolean(instructions));
 
-      try {
-        handleFlutterwavePayment({
-          callback: (response) => {
-            console.log('Payment response:', response);
-            closePaymentModal();
-            
-            if (response.status === 'successful') {
-              setRefreshKey(prev => prev + 1);
-              toast.success('Payment successful! Your booking is confirmed.');
-              navigate('/user', { 
-                state: { 
-                  bookingId: booking.id, 
-                  paymentReference: txRef,
-                  success: true 
-                } 
-              });
-            } else if (response.status === 'cancelled') {
-              toast.warning('Payment was cancelled. Your booking is pending payment.');
-              setRefreshKey(prev => prev + 1);
-              navigate('/user');
-            } else {
-              toast.error('Payment failed. Please try again.');
-              setRefreshKey(prev => prev + 1);
-            }
-            setLoading(false);
-          },
-          onClose: () => {
-            console.log('Payment modal closed');
-            setLoading(false);
-          },
-        });
-      } catch (paymentError) {
-        console.error('Payment initialization failed:', paymentError);
-        toast.error('Failed to initialize payment. Please check your payment configuration.');
-        setRefreshKey(prev => prev + 1);
-        setLoading(false);
+      setRefreshKey((prev) => prev + 1);
+
+      if (instructions) {
+        toast.success('Booking created! Transfer to the driver to confirm your seat.');
+      } else {
+        toast.warning('Booking created, but driver payment details were not found. Please contact support.');
       }
     } catch (error) {
       console.error('Booking failed:', error);
       toast.error('Booking failed. Please try again.');
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
+    } finally {
       setLoading(false);
     }
   };
@@ -348,6 +374,92 @@ const BookRide: React.FC = () => {
               <button onClick={handleBooking} className="btn-primary btn-lg" disabled={loading}>
                 {loading ? 'Processing...' : 'Confirm Booking'}
               </button>
+            </section>
+          )}
+
+          {showPaymentPanel && paymentInstructions && recentBooking && (
+            <section className="payment-instructions">
+              <div className="payment-header">
+                <h2>Transfer to Complete Booking</h2>
+                <button className="link-btn" onClick={() => setShowPaymentPanel(false)}>
+                  Hide
+                </button>
+              </div>
+              <p className="payment-subtitle">
+                Send <strong>₦{transferAmount.toLocaleString()}</strong> to the driver’s virtual account below.
+                Once your bank transfer is done, tap “I have transferred” so the driver is notified instantly.
+              </p>
+
+              <div className="account-card">
+                <div className="account-row">
+                  <span className="account-label">Account Name</span>
+                  <div className="account-value">
+                    {paymentInstructions.beneficiary.accountName}
+                    <button
+                      className="copy-btn"
+                      onClick={() => copyToClipboard(paymentInstructions.beneficiary.accountName)}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="account-row">
+                  <span className="account-label">Account Number</span>
+                  <div className="account-value account-number">
+                    {paymentInstructions.beneficiary.accountNumber}
+                    <button
+                      className="copy-btn"
+                      onClick={() => copyToClipboard(paymentInstructions.beneficiary.accountNumber)}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="account-row">
+                  <span className="account-label">Bank</span>
+                  <div className="account-value">
+                    {paymentInstructions.beneficiary.bankName}
+                    <button
+                      className="copy-btn"
+                      onClick={() => copyToClipboard(paymentInstructions.beneficiary.bankName)}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="account-row">
+                  <span className="account-label">Amount</span>
+                  <div className="account-value amount">
+                    ₦{transferAmount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="transfer-form">
+                <label htmlFor="transfer-reference">Bank transfer reference</label>
+                <input
+                  id="transfer-reference"
+                  type="text"
+                  value={transferReference}
+                  onChange={(event) => setTransferReference(event.target.value)}
+                  placeholder="Enter the reference that appears in your banking app"
+                />
+                <div className="transfer-actions">
+                  <button className="btn-secondary" onClick={() => setShowPaymentPanel(false)}>
+                    I’ll pay later
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={handleConfirmTransfer}
+                    disabled={confirmingTransfer}
+                  >
+                    {confirmingTransfer ? 'Confirming...' : 'I have transferred'}
+                  </button>
+                </div>
+                <p className="payment-hint">
+                  The driver automatically gets a notification with your name once you confirm.
+                </p>
+              </div>
             </section>
           )}
         </div>

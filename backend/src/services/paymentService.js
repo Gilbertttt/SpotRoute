@@ -3,6 +3,7 @@ const PaymentTransaction = require('../models/PaymentTransaction');
 const VirtualAccount = require('../models/VirtualAccount');
 const BankAccount = require('../models/BankAccount');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 class PaymentService {
   /**
@@ -132,6 +133,38 @@ class PaymentService {
       });
 
       await connection.commit();
+
+      const metadataObj =
+        typeof metadata === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(metadata);
+              } catch (err) {
+                console.warn('Failed to parse payment metadata:', err.message);
+                return {};
+              }
+            })()
+          : metadata || {};
+
+      const payerName =
+        metadataObj.payerName ||
+        metadataObj.customerName ||
+        metadataObj.userName ||
+        metadataObj.fullName ||
+        'A passenger';
+
+      const formattedAmount = Number(amount || 0).toLocaleString('en-NG', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+
+      await Notification.create({
+        userId: virtualAccount.driverId,
+        type: 'PAYMENT_RECEIVED',
+        title: 'Transfer confirmed',
+        message: `${payerName} paid ₦${formattedAmount}${bookingId ? ` for booking #${bookingId}` : ''}. Reference: ${paymentReference}`,
+        relatedId: bookingId || paymentTransaction.id,
+      });
 
       return {
         paymentTransaction,

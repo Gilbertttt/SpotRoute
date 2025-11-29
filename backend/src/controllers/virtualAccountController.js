@@ -3,6 +3,7 @@ const BankAccount = require('../models/BankAccount');
 const PaymentTransaction = require('../models/PaymentTransaction');
 const PaymentService = require('../services/paymentService');
 const User = require('../models/User');
+const Ride = require('../models/Ride');
 
 /**
  * Get or create virtual account for the authenticated driver
