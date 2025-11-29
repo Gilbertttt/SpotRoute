@@ -134,6 +134,94 @@ const runMigrations = async () => {
       }
     }
 
+    await ensureBookingRatingColumns(connection);
+
+    // Virtual Accounts Table - Stores virtual account details for drivers
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS virtual_accounts (
+        id CHAR(36) PRIMARY KEY,
+        driver_id CHAR(36) NOT NULL UNIQUE,
+        account_number VARCHAR(50) NOT NULL UNIQUE,
+        bank_name VARCHAR(100) NOT NULL,
+        bank_code VARCHAR(10) NOT NULL,
+        account_name VARCHAR(255) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Bank Accounts Table - Stores driver's actual bank account details
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS bank_accounts (
+        id CHAR(36) PRIMARY KEY,
+        driver_id CHAR(36) NOT NULL UNIQUE,
+        account_number VARCHAR(50) NOT NULL,
+        bank_name VARCHAR(100) NOT NULL,
+        bank_code VARCHAR(10) NOT NULL,
+        account_name VARCHAR(255) NOT NULL,
+        is_verified BOOLEAN DEFAULT FALSE,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Payment Transactions Table - Tracks all payments, commissions, and transfers
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS payment_transactions (
+        id CHAR(36) PRIMARY KEY,
+        driver_id CHAR(36) NOT NULL,
+        virtual_account_id CHAR(36),
+        booking_id CHAR(36),
+        transaction_type ENUM('PAYMENT_RECEIVED', 'COMMISSION_DEDUCTED', 'DRIVER_PAYOUT', 'REFUND') NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        commission_amount DECIMAL(10,2) DEFAULT 0,
+        commission_percentage DECIMAL(5,2) DEFAULT 0,
+        driver_amount DECIMAL(10,2) DEFAULT 0,
+        reference VARCHAR(255) UNIQUE,
+        payment_reference VARCHAR(255),
+        status ENUM('PENDING', 'SUCCESS', 'FAILED', 'PROCESSING') DEFAULT 'PENDING',
+        description TEXT,
+        metadata JSON,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (virtual_account_id) REFERENCES virtual_accounts(id) ON DELETE SET NULL,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Company Settings Table - Stores commission percentage and main account details
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS company_settings (
+        id CHAR(36) PRIMARY KEY,
+        setting_key VARCHAR(100) NOT NULL UNIQUE,
+        setting_value TEXT NOT NULL,
+        description TEXT,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Seed default company settings if they don't exist
+    try {
+      const [settings] = await connection.query('SELECT COUNT(*) as total FROM company_settings');
+      if (settings[0].total === 0) {
+        const { v4: uuid } = require('uuid');
+        await connection.query(`
+          INSERT INTO company_settings (id, setting_key, setting_value, description)
+          VALUES 
+            (?, 'COMMISSION_PERCENTAGE', '10.00', 'Default commission percentage taken from driver payments'),
+            (?, 'MAIN_ACCOUNT_NUMBER', '0000000000', 'SpotRoute main account number'),
+            (?, 'MAIN_ACCOUNT_BANK', 'SpotRoute Bank', 'SpotRoute main account bank name'),
+            (?, 'MAIN_ACCOUNT_NAME', 'SpotRoute Limited', 'SpotRoute main account name')
+        `, [uuid(), uuid(), uuid(), uuid()]);
+      }
+    } catch (error) {
+      console.warn('Error seeding company settings:', error.message);
+    }
+
     await seedRoutes(connection);
     await seedPickupPoints(connection);
   } finally {
@@ -213,5 +301,39 @@ const seedPickupPoints = async (connection) => {
 module.exports = {
   pool,
   runMigrations,
+};
+
+const ensureBookingRatingColumns = async (connection) => {
+  const columnsToEnsure = [
+    { name: 'rating_value', definition: 'INT' },
+    { name: 'rating_comment', definition: 'TEXT' },
+    { name: 'rating_compliment', definition: 'VARCHAR(255)' },
+    { name: 'rating_created_at', definition: 'DATETIME' },
+  ];
+
+  for (const column of columnsToEnsure) {
+    try {
+      const [columns] = await connection.query(
+        `
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'bookings' 
+            AND COLUMN_NAME = ?
+        `,
+        [column.name],
+      );
+
+      if (columns.length === 0) {
+        await connection.query(
+          `ALTER TABLE bookings ADD COLUMN ${column.name} ${column.definition}`,
+        );
+      }
+    } catch (error) {
+      if (!error.message.includes('Duplicate column')) {
+        console.warn(`Error ensuring column ${column.name} on bookings:`, error.message);
+      }
+    }
+  }
 };
 

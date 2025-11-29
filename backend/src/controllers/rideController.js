@@ -1,4 +1,5 @@
 const Ride = require('../models/Ride');
+const Booking = require('../models/Booking');
 
 exports.getAvailableRides = async (req, res, next) => {
   try {
@@ -33,6 +34,70 @@ exports.createRide = async (req, res, next) => {
     });
 
     res.status(201).json(ride);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getRideById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const ride = await Ride.findById(id);
+    if (!ride) {
+      return res.status(404).json({ message: 'Ride not found' });
+    }
+    res.json(ride);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getDriverRides = async (req, res, next) => {
+  try {
+    const driverId = req.user.id;
+    const rides = await Ride.findByDriverId(driverId);
+    res.json(rides);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateRideStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ message: 'status is required' });
+    }
+
+    const ride = await Ride.updateStatus({
+      rideId: id,
+      driverId: req.user.id,
+      status,
+    });
+
+    res.json(ride);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getRideBookings = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const ride = await Ride.findById(id);
+
+    if (!ride) {
+      return res.status(404).json({ message: 'Ride not found' });
+    }
+
+    if (ride.driver.id !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const bookings = await Booking.findByRideId(id);
+    res.json(bookings);
   } catch (error) {
     next(error);
   }

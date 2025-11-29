@@ -57,3 +57,40 @@ exports.getBookingById = async (req, res, next) => {
   }
 };
 
+exports.cancelBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.cancel({
+      bookingId: id,
+      requesterId: req.user.id,
+      requesterRole: req.user.role,
+    });
+    res.json(booking);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.rateBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rating, compliment, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'rating must be between 1 and 5' });
+    }
+
+    const booking = await Booking.rate({
+      bookingId: id,
+      userId: req.user.id,
+      rating,
+      compliment,
+      comment,
+    });
+
+    res.json(booking);
+  } catch (error) {
+    next(error);
+  }
+};
+
