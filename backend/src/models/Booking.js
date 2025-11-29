@@ -3,6 +3,7 @@ const { pool } = require('../config/database');
 const Ride = require('./Ride');
 const User = require('./User');
 const PickupPoint = require('./PickupPoint');
+const VirtualAccount = require('./VirtualAccount');
 
 const mapBookingRow = (row) => {
   if (!row) return null;
@@ -85,29 +86,13 @@ class Booking {
         [seatCount, rideId],
       );
 
-      // Create booking
+      // Create booking with PENDING payment status
       await connection.query(
         `
           INSERT INTO bookings (id, ride_id, user_id, seat_count, total_price, status, payment_status, pickup_point_id)
-          VALUES (?, ?, ?, ?, ?, 'CONFIRMED', 'PAID', ?)
+          VALUES (?, ?, ?, ?, ?, 'PENDING', 'PENDING', ?)
         `,
         [bookingId, rideId, userId, seatCount, totalPrice, pickupPointId || null],
-      );
-
-      // Get user details for notification
-      const user = await User.findById(userId);
-      const notificationId = uuid();
-      await connection.query(
-        `
-          INSERT INTO notifications (id, user_id, type, title, message, related_id)
-          VALUES (?, ?, 'BOOKING_CONFIRMED', 'New Booking Confirmed', ?, ?)
-        `,
-        [
-          notificationId,
-          ride.driver_id,
-          `${user ? user.name : 'A user'} booked ${seatCount} seat(s) on your ride`,
-          bookingId,
-        ],
       );
 
       await connection.commit();
@@ -326,6 +311,29 @@ class Booking {
     }
   }
 
+  static async markPaymentAsPaid({ bookingId, paymentReference = null, amountPaid = null }) {
+    await pool.query(
+      `
+        UPDATE bookings
+        SET 
+          payment_status = 'PAID',
+          status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END
+        WHERE id = ?
+      `,
+      [bookingId],
+    );
+
+    if (paymentReference || amountPaid) {
+      console.log(
+        `Booking ${bookingId} marked as PAID${paymentReference ? ` (reference: ${paymentReference})` : ''}${
+          amountPaid ? ` amount: ${amountPaid}` : ''
+        }`,
+      );
+    }
+
+    return this.findById(bookingId);
+  }
+
   static async mapFullBooking(row) {
     const booking = mapBookingRow(row);
     if (!booking) return null;
@@ -335,6 +343,29 @@ class Booking {
     if (!ride) return null;
 
     booking.ride = ride;
+
+    if (ride.driver && ride.driver.id) {
+      const accountName = ride.driver.name || ride.driver.email || 'SpotRoute Driver';
+      const virtualAccount = await VirtualAccount.getOrCreate(ride.driver.id, accountName);
+
+      if (virtualAccount) {
+        const sanitizedAccount = {
+          accountNumber: virtualAccount.accountNumber,
+          bankName: virtualAccount.bankName,
+          bankCode: virtualAccount.bankCode,
+          accountName: virtualAccount.accountName,
+          isActive: virtualAccount.isActive,
+        };
+
+        ride.driver.virtualAccount = sanitizedAccount;
+        booking.paymentInstructions = {
+          currency: 'NGN',
+          totalAmount: booking.totalPrice,
+          beneficiary: sanitizedAccount,
+          reference: booking.id,
+        };
+      }
+    }
 
     // Get user details
     const user = await User.findById(booking.userId);

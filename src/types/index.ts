@@ -33,11 +33,20 @@ export interface DriverProfile {
   joinDate: string;
 }
 
+export interface VirtualAccountDetails {
+  accountNumber: string;
+  bankName: string;
+  bankCode: string;
+  accountName: string;
+  isActive?: boolean;
+}
+
 export interface Driver extends User {
   carModel: string;
   carPlate: string;
   wallet: Wallet;
   profile: DriverProfile;
+  virtualAccount?: VirtualAccountDetails;
 }
 
 export interface Wallet {
@@ -76,6 +85,13 @@ export interface Ride {
   createdAt: string;
 }
 
+export interface PaymentInstructions {
+  currency: string;
+  totalAmount: number;
+  reference?: string;
+  beneficiary: VirtualAccountDetails;
+}
+
 export interface Booking {
   id: string;
   user: User;
@@ -87,6 +103,7 @@ export interface Booking {
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   rating?: Rating;
   createdAt: string;
+  paymentInstructions?: PaymentInstructions;
 }
 
 export interface Transaction {
@@ -102,6 +119,16 @@ export interface Transaction {
 export interface AuthResponse {
   token: string;
   user: User | Driver;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  relatedId?: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface LoginRequest {

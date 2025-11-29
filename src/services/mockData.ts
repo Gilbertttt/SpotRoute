@@ -152,6 +152,13 @@ export const mockDriver: Driver = {
     ratings: mockRatings,
     joinDate: '2023-06-15T00:00:00Z',
   },
+  virtualAccount: {
+    accountNumber: 'SR00012345',
+    bankName: 'SpotRoute Bank',
+    bankCode: '999',
+    accountName: 'John Doe',
+    isActive: true,
+  },
 };
 
 export const mockRides: Ride[] = [
@@ -254,6 +261,18 @@ export const createMockBooking = (data: {
     status: 'CONFIRMED',
     paymentStatus: 'PAID',
     createdAt: new Date().toISOString(),
+    paymentInstructions: {
+      currency: 'NGN',
+      totalAmount: ride.route.price * data.seatCount,
+      reference: `MOCK-${Date.now()}`,
+      beneficiary: ride.driver.virtualAccount || {
+        accountNumber: 'SR00012345',
+        bankName: 'SpotRoute Bank',
+        bankCode: '999',
+        accountName: 'John Doe',
+        isActive: true,
+      },
+    },
   };
 
   mockBookings.push(booking);
