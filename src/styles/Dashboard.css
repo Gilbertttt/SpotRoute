@@ -113,14 +113,16 @@
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(41, 9, 202, 0.15);
   padding: 24px;
   border-radius: 8px;
   backdrop-filter: blur(10px);
+  color: black;
 }
 
 .stat-card h3 {
   font-size: 32px;
+  color: black;
   margin: 0 0 8px;
 }
 
