@@ -5,15 +5,35 @@
       "src": "backend/package.json",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "backend/**"
+        "includeFiles": ["backend/**"]
+      }
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/src/index.js"
+      "dest": "/backend/src/index.js"
+    },
+    {
+      "src": "/(.*\\.(js|css|ico|png|jpg|svg|json|html))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/backend/src/index.js"
     }
   ]
 }
-
