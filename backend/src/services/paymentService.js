@@ -57,17 +57,23 @@ class PaymentService {
       // Find virtual account
       const virtualAccount = await VirtualAccount.findByAccountNumber(virtualAccountNumber);
       if (!virtualAccount) {
-        throw new Error('Virtual account not found');
+        const error = new Error('Virtual account not found');
+        error.status = 404;
+        throw error;
       }
 
       if (!virtualAccount.isActive) {
-        throw new Error('Virtual account is not active');
+        const error = new Error('Virtual account is not active');
+        error.status = 400;
+        throw error;
       }
 
       // Check if payment already processed
       const existingTransaction = await PaymentTransaction.findByPaymentReference(paymentReference);
       if (existingTransaction) {
-        throw new Error('Payment already processed');
+        const error = new Error('Payment already processed');
+        error.status = 400;
+        throw error;
       }
 
       // Calculate commission
@@ -126,13 +132,19 @@ class PaymentService {
         );
       }
 
-      // Process automatic payout to driver's bank account
-      await this.processDriverPayout(virtualAccount.driverId, driverAmount, {
-        originalPaymentId: paymentTransaction.id,
-        originalPaymentReference: paymentReference,
-      });
-
       await connection.commit();
+
+      // Process automatic payout to driver's bank account (after commit to avoid nested transactions)
+      // This is non-blocking - if it fails, the payment is still recorded
+      try {
+        await this.processDriverPayout(virtualAccount.driverId, driverAmount, {
+          originalPaymentId: paymentTransaction.id,
+          originalPaymentReference: paymentReference,
+        });
+      } catch (payoutError) {
+        // Log but don't fail the payment processing
+        console.error('Payout processing failed (non-blocking):', payoutError);
+      }
 
       const metadataObj =
         typeof metadata === 'string'
@@ -158,13 +170,19 @@ class PaymentService {
         maximumFractionDigits: 2,
       });
 
-      await Notification.create({
-        userId: virtualAccount.driverId,
-        type: 'PAYMENT_RECEIVED',
-        title: 'Transfer confirmed',
-        message: `${payerName} paid ₦${formattedAmount}${bookingId ? ` for booking #${bookingId}` : ''}. Reference: ${paymentReference}`,
-        relatedId: bookingId || paymentTransaction.id,
-      });
+      // Create notification (non-blocking - if it fails, payment is still processed)
+      try {
+        await Notification.create({
+          userId: virtualAccount.driverId,
+          type: 'PAYMENT_RECEIVED',
+          title: 'Transfer confirmed',
+          message: `${payerName} paid ₦${formattedAmount}${bookingId ? ` for booking #${bookingId}` : ''}. Reference: ${paymentReference}`,
+          relatedId: bookingId || paymentTransaction.id,
+        });
+      } catch (notificationError) {
+        // Log but don't fail the payment processing
+        console.error('Notification creation failed (non-blocking):', notificationError);
+      }
 
       return {
         paymentTransaction,

@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const PaymentService = require('../services/paymentService');
 const VirtualAccount = require('../models/VirtualAccount');
+const { pool } = require('../config/database');
 
 exports.confirmTransfer = async (req, res, next) => {
   try {
@@ -18,6 +19,7 @@ exports.confirmTransfer = async (req, res, next) => {
       return res.status(400).json({ message: 'amount must be a positive number' });
     }
 
+    // Get booking details first to validate
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -52,23 +54,102 @@ exports.confirmTransfer = async (req, res, next) => {
       narration: narration || `Transfer for booking ${bookingId}`,
     };
 
-    const result = await PaymentService.processPaymentReceived({
-      virtualAccountNumber,
-      amount: amountValue,
-      paymentReference,
-      bookingId,
-      metadata,
-    });
+    // Check seat availability before processing payment
+    const connection = await pool.getConnection();
+    let rideRow;
+    try {
+      await connection.beginTransaction();
 
-    await Booking.markPaymentAsPaid({
-      bookingId,
-      paymentReference,
-      amountPaid: amountValue,
-    });
+      // Lock the ride row and check seat availability
+      const [rideRows] = await connection.query(
+        `
+          SELECT rides.available_seats, rides.id as ride_id
+          FROM rides
+          JOIN bookings ON rides.id = bookings.ride_id
+          WHERE bookings.id = ? AND bookings.payment_status != 'PAID'
+          FOR UPDATE
+        `,
+        [bookingId],
+      );
+
+      if (!rideRows.length) {
+        await connection.rollback();
+        return res.status(404).json({ message: 'Ride not found for this booking or payment already processed' });
+      }
+
+      rideRow = rideRows[0];
+
+      // Check if seats are still available
+      if (rideRow.available_seats < booking.seatCount) {
+        await connection.rollback();
+        return res.status(400).json({ message: 'Not enough seats available. This ride may have been fully booked.' });
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    // Process payment (PaymentService handles its own transaction)
+    let result;
+    try {
+      result = await PaymentService.processPaymentReceived({
+        virtualAccountNumber,
+        amount: amountValue,
+        paymentReference,
+        bookingId,
+        metadata,
+      });
+    } catch (error) {
+      console.error('Payment processing failed:', error);
+      // If payment processing fails, create a proper error with status
+      const paymentError = new Error(error.message || 'Payment processing failed');
+      paymentError.status = error.status || 500;
+      throw paymentError;
+    }
+
+    // After payment is processed, reduce seats and mark booking as paid
+    const updateConnection = await pool.getConnection();
+    try {
+      await updateConnection.beginTransaction();
+
+      // Reduce available seats when payment is confirmed
+      await updateConnection.query(
+        `
+          UPDATE rides
+          SET available_seats = available_seats - ?
+          WHERE id = ?
+        `,
+        [booking.seatCount, rideRow.ride_id],
+      );
+
+      // Mark payment as paid
+      await updateConnection.query(
+        `
+          UPDATE bookings
+          SET 
+            payment_status = 'PAID',
+            status = CASE WHEN status = 'PENDING' THEN 'CONFIRMED' ELSE status END
+          WHERE id = ?
+        `,
+        [bookingId],
+      );
+
+      await updateConnection.commit();
+    } catch (error) {
+      await updateConnection.rollback();
+      console.error('Error updating seats and booking status:', error);
+      throw error;
+    } finally {
+      updateConnection.release();
+    }
 
     const updatedBooking = await Booking.findById(bookingId);
 
-    res.json({
+    return res.status(200).json({
       message: 'Transfer confirmed successfully',
       booking: updatedBooking,
       payout: {
@@ -77,7 +158,17 @@ exports.confirmTransfer = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error('Error in confirmTransfer:', error);
+    console.error('Error stack:', error.stack);
+    // Ensure we always send a response
+    // Check if response has already been sent
+    if (res.headersSent) {
+      console.error('Response already sent, cannot send error response');
+      return;
+    }
+    const status = error.status || 500;
+    const message = error.message || 'Internal server error';
+    return res.status(status).json({ message });
   }
 };
 

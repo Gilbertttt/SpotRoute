@@ -76,15 +76,8 @@ class Booking {
       const bookingId = uuid();
       const totalPrice = Number(ride.price) * seatCount;
 
-      // Update available seats
-      await connection.query(
-        `
-          UPDATE rides
-          SET available_seats = available_seats - ?
-          WHERE id = ?
-        `,
-        [seatCount, rideId],
-      );
+      // Note: Seats will be reduced when payment is confirmed, not at booking creation
+      // This allows users to create bookings and then transfer payment
 
       // Create booking with PENDING payment status
       await connection.query(

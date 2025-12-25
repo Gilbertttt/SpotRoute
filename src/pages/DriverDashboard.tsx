@@ -185,7 +185,8 @@ const DriverDashboard: React.FC = () => {
                       <h4>
                         {ride.route.from} → {ride.route.to}
                       </h4>
-                      <p className="route-duration">{ride.route.duration}</p>
+                   
+                      <p className="route-duration">{" "}{ride.route.duration}</p>
                     </div>
                     <span className={`status ${getStatusClass(ride.status)}`}>
                       {ride.status}

@@ -157,7 +157,7 @@ const BookRide: React.FC = () => {
 
     const amountToConfirm = transferAmount || paymentInstructions?.totalAmount || totalAmount;
 
-    setConfirmingTransfer(true);
+
     try {
       const response = await paymentService.confirmTransfer({
         bookingId: recentBooking.id,
@@ -168,9 +168,16 @@ const BookRide: React.FC = () => {
 
       setRecentBooking(response.booking);
       const updatedInstructions = buildPaymentInstructions(response.booking);
+      setConfirmingTransfer(true);
       setPaymentInstructions(updatedInstructions);
+      
+      // Refresh rides to show updated seat counts
+      setRefreshKey((prev) => prev + 1);
+      
       toast.success('Transfer confirmed! Driver has been notified.');
       setShowPaymentPanel(false);
+      
+      // Redirect to homepage (user dashboard)
       navigate('/user', {
         state: {
           bookingId: response.booking.id,
