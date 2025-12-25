@@ -1,16 +1,88 @@
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'spotroute',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  timezone: 'Z',
-});
+// Parse DATABASE_URL if provided (for Railway/Vercel), otherwise use individual env vars
+const getDbConfig = () => {
+  // If DATABASE_URL is provided, parse it (Railway/Vercel style)
+  if (process.env.DATABASE_URL) {
+    try {
+      let url = process.env.DATABASE_URL.trim();
+      
+      // Handle cases where protocol might be missing or malformed (e.g., "ysql://" should be "mysql://")
+      if (!url.startsWith('mysql://') && !url.startsWith('mysqls://')) {
+        // Try to fix common typos
+        if (!url.includes('://')) {
+          // If no protocol, assume mysql://
+          url = 'mysql://' + url;
+        }
+      }
+      
+      // Remove protocol
+      const urlWithoutProtocol = url.replace(/^mysqls?:\/\//, '');
+      
+      // Split into auth and host/port/db parts
+      const atIndex = urlWithoutProtocol.indexOf('@');
+      if (atIndex === -1) {
+        throw new Error('Invalid DATABASE_URL format: missing @ separator');
+      }
+      
+      const authPart = urlWithoutProtocol.substring(0, atIndex);
+      const hostPart = urlWithoutProtocol.substring(atIndex + 1);
+      
+      // Parse auth (user:password)
+      const colonIndex = authPart.indexOf(':');
+      const user = colonIndex !== -1 
+        ? decodeURIComponent(authPart.substring(0, colonIndex))
+        : decodeURIComponent(authPart);
+      const password = colonIndex !== -1 
+        ? decodeURIComponent(authPart.substring(colonIndex + 1))
+        : '';
+      
+      // Parse host/port/database
+      const slashIndex = hostPart.indexOf('/');
+      const hostPort = slashIndex !== -1 ? hostPart.substring(0, slashIndex) : hostPart;
+      const database = slashIndex !== -1 ? hostPart.substring(slashIndex + 1) : 'railway';
+      
+      // Parse host and port
+      const portIndex = hostPort.indexOf(':');
+      const host = portIndex !== -1 ? hostPort.substring(0, portIndex) : hostPort;
+      const port = portIndex !== -1 ? Number(hostPort.substring(portIndex + 1)) : 3306;
+      
+      return {
+        host: host || 'localhost',
+        port: port || 3306,
+        user: user || 'root',
+        password: password || '',
+        database: database || 'railway',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        timezone: 'Z',
+        // Enable SSL for Railway connections (production or if using mysqls://)
+        ssl: url.startsWith('mysqls://') || process.env.NODE_ENV === 'production' ? {
+          rejectUnauthorized: false
+        } : false
+      };
+    } catch (error) {
+      console.error('Error parsing DATABASE_URL, falling back to individual env vars:', error.message);
+      console.error('DATABASE_URL value:', process.env.DATABASE_URL ? '***' : 'not set');
+    }
+  }
+  
+  // Fall back to individual environment variables (for localhost)
+  return {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'spotroute',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    timezone: 'Z',
+  };
+};
+
+const pool = mysql.createPool(getDbConfig());
 
 const runMigrations = async () => {
   const connection = await pool.getConnection();
